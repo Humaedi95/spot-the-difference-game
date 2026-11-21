@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twin Scenes — Spot the Difference</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #1d2733;
+    color: #f4ead8;
+    font-family: Georgia, 'Times New Roman', serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+  header {
+    width: 1160px;
+    max-width: 96vw;
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    padding: 14px 4px 8px;
+  }
+  header h1 { margin: 0; font-size: 30px; letter-spacing: 1px; color: #ffd23f; }
+  header .sub { color: #9fb0c3; font-size: 15px; font-style: italic; }
+  #hud {
+    width: 1160px;
+    max-width: 96vw;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 0 4px 10px;
+    font-size: 16px;
+  }
+  .pill {
+    background: #2b3a4d;
+    border: 1px solid #4a5d75;
+    border-radius: 20px;
+    padding: 6px 14px;
+    white-space: nowrap;
+  }
+  .pill strong { color: #ffd23f; }
+  #hud-time.low { color: #ff5a5a; border-color: #ff5a5a; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0.55; } }
+  #hud-found { font-weight: bold; }
+  button {
+    font-family: Georgia, serif;
+    font-size: 15px;
+    cursor: pointer;
+    border-radius: 20px;
+    border: 1px solid #ffd23f;
+    background: #ffd23f;
+    color: #2b2118;
+    padding: 6px 16px;
+    font-weight: bold;
+  }
+  button:hover { background: #ffe08a; }
+  button.ghost { background: transparent; color: #f4ead8; border-color: #4a5d75; }
+  button.ghost:hover { border-color: #ffd23f; }
+  #stage { position: relative; width: 1160px; max-width: 96vw; }
+  canvas {
+    display: block;
+    width: 1160px;
+    max-width: 96vw;
+    height: auto;
+    cursor: crosshair;
+    border-radius: 8px;
+  }
+  #hud-message {
+    width: 1160px;
+    max-width: 96vw;
+    min-height: 26px;
+    padding: 6px 4px 0;
+    font-style: italic;
+    color: #9fb0c3;
+    font-size: 15px;
+  }
+  footer {
+    width: 1160px;
+    max-width: 96vw;
+    padding: 8px 4px 18px;
+    color: #9fb0c3;
+    font-size: 14px;
+  }
+  footer kbd {
+    background: #2b3a4d;
+    border: 1px solid #4a5d75;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: Georgia, serif;
+  }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(15, 23, 32, 0.82);
+    border-radius: 8px;
+    text-align: center;
+    padding: 20px;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h2 { margin: 0; font-size: 40px; color: #ffd23f; }
+  .overlay p { margin: 0; max-width: 560px; font-size: 17px; line-height: 1.5; }
+  .overlay .big { font-size: 22px; font-weight: bold; }
+  .overlay button { font-size: 18px; padding: 10px 28px; }
+  .levels { font-size: 15px; color: #9fb0c3; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Twin Scenes</h1>
+  <span class="sub">spot the difference — three original scenes, seven differences each</span>
+</header>
+<div id="hud">
+  <span class="pill" id="hud-level">Level 1 of 3 · Sunny Harbor</span>
+  <span class="pill" id="hud-found">Found 0 / 7 · 7 left</span>
+  <span class="pill" id="hud-time">⏱ 2:30</span>
+  <span class="pill" id="hud-score">Score 0</span>
+  <button id="btn-hint" type="button">💡 Hint</button>
+  <span class="pill" id="hud-hints">Hints 3 (H)</span>
+  <button class="ghost" id="hud-mute" type="button">Sound on (M)</button>
+</div>
+<div id="stage">
+  <canvas id="game-canvas" width="1160" height="480"></canvas>
+  <div class="overlay" id="ov-title">
+    <h2>Twin Scenes</h2>
+    <p>Two pictures, nearly identical. One hides seven differences — a missing
+    seagull, a flag that changed colour, a cat that wandered off. Find them all
+    before the clock runs out.</p>
+    <p class="levels">Level 1 · Sunny Harbor &nbsp;→&nbsp; Level 2 · Moonlit Garden &nbsp;→&nbsp; Level 3 · Cozy Bakery</p>
+    <button id="btn-start" type="button">Start the hunt</button>
+    <p class="levels">Click a difference to mark it · <kbd>H</kbd> hint · <kbd>M</kbd> sound · <kbd>R</kbd> restart</p>
+  </div>
+  <div class="overlay hidden" id="ov-clear">
+    <h2>Level cleared!</h2>
+    <p id="clear-text"></p>
+    <button id="btn-next" type="button">Next level →</button>
+  </div>
+  <div class="overlay hidden" id="ov-win">
+    <h2>🏆 You found them all!</h2>
+    <p id="win-text"></p>
+    <p class="big">Sharp eyes win the day.</p>
+    <button id="btn-again" type="button">Play again</button>
+  </div>
+  <div class="overlay hidden" id="ov-over">
+    <h2>Time's up!</h2>
+    <p id="over-text"></p>
+    <button id="btn-retry" type="button">Try again</button>
+  </div>
+</div>
+<div id="hud-message"></div>
+<footer>
+  How to play: click a difference in either picture to mark it on both.
+  A wrong click costs 10 points; a hint costs 25. Beat the clock — leftover
+  seconds are worth 5 points each. Keyboard: <kbd>H</kbd> hint,
+  <kbd>M</kbd> sound, <kbd>R</kbd> restart, <kbd>N</kbd> next level,
+  <kbd>Enter</kbd> start.
+</footer>
+<script src="src/config.js"></script>
+<script src="src/scenes.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/engine.js"></script>
+<script src="src/input.js"></script>
+<script src="src/render.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>
